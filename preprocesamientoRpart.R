@@ -1,25 +1,58 @@
-ova_ovo_classifier <- function(datos, k){
-	ovo_class <- ovo_rpart(datos,k)
-	ova_class <- ova_rpart(datos, k)
+#### Bootstrap #############
 
-	list(ovo_class, ova_class)
+generate_samples <- function(datos, cantidad, rows){
+	muestras = list()
+	for (i in seq(cantidad)) {
+		muestras[[i]] <- dplyr::sample_n(datos, rows)
+	}
+
+	muestras
 }
 
-ova_ovo_test <- function(test, modelos, k=4){
-	ova_models = modelos[[1]]
-	ovo_models = modelos[[2]]
+bootstrap <- function(datos, n=100, r=1000){
+	muestras <- generate_samples(datos,n,r)
+	modelos <- list()
+	for (i in seq(n)) {
+		modelos[[toString(i)]] <- ova_ovo_classifier(muestras[[i]])
+	}
 
-	ova_preds <- ova_predict(test, ova_models)
-
-
+	modelos
 }
 
+mPred <- function(test, modelos){
+	decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
+	for (i in seq(length(modelos))) {
+		decisiones[,i] <- t(as.data.frame(ova_ovo_predict(test, modelos[[i]])))
+		rownames(decisiones) <- c()
+	}
 
+	decisiones <- apply(X=decisiones, MARGIN=1, FUN=function(x) mfv(as.numeric(x)))
+	sapply(decisiones,function(x) x[[1]][[1]])
+}
 
+####Ova-OVO#################
+
+ova_ovo_classifier <- function(datos, k=4){
+	list(ovo_rpart(datos,k), ova_rpart(datos, k))
+}
+
+ova_ovo_predict <- function(test, modelos, k=4){
+	modelos_ovo <- modelos[[1]]
+	modelos_ova <- modelos[[2]]
+	#POR ALGUN PUTO MOTIVO SI LO EJECUTO A MANO VA, Y SI NO PUES NO
+	ova_preds <- ova_predict(test, modelos_ova, k, T)
+	preds <- vector(mode = "list")
+
+	for (i in seq(nrow(ova_preds))) {
+		preds[[i]] <- ovo_predict(test, i, modelos_ovo, sec_max(ova_preds[i,])-1)
+	}
+
+	preds
+}
 
 ################# OVO ############################
 ovo_rpart <- function(datas, k=4){
-	clasificadores <- data.frame(matrix(0,nrow = 15))
+	clasificadores <- list()
 	combinaciones <- combn(k,2)
 
 	for (combinacion in seq(ncol(combinaciones))){
@@ -33,8 +66,8 @@ ovo_rpart <- function(datas, k=4){
 
 		fit <- rpart(y~., data=data_dummy, method="class")
 
-		clasificadores[[paste("a",u,v, sep="")]] <- fit
-		clasificadores[[paste("a",v,u, sep="")]] <- fit
+		clasificadores[[paste("a",u,v, sep="")]] <- list(fit)
+		clasificadores[[paste("a",v,u, sep="")]] <- list(fit)
 
 	}
 	clasificadores
@@ -42,10 +75,9 @@ ovo_rpart <- function(datas, k=4){
 
 ovo_predict <- function(datos_originales, i, modelos_ovo, indices){
 	muestra <- datos_originales[i,]
-	modelo <- modelos_ovo[[paste("a",indices[[1]],indices[[2]], sep="")]]
-
-	predict(modelo, muestra,type='class')
-
+	modelo <- modelos_ovo[[paste("a",indices[[1]],indices[[2]], sep="")]][[1]]
+	f <- predict(modelo, muestra,type='class')
+	as.numeric(levels(f))[f]
 	#if(prediccion==1){
 	#	indices[[1]]
 	#}
