@@ -19,16 +19,61 @@ bootstrap <- function(datos, n=100, r=1000){
 	modelos
 }
 
+bootstrap_parallel <- function(datos, n=100, r=1000){
+	muestras <- generate_samples(datos,n,r)
+	modelos <- list()
+
+	cores=detectCores()
+	cl <- makeCluster(cores[1]-1) #not to overload your computer
+	registerDoParallel(cl)
+
+	modelos <- foreach(i=seq(length(n)), .export = ls(globalenv()) ,.combine=list) %dopar% {
+	   tempMatrix = ova_ovo_classifier(muestras[[i]])
+	   #do other things if you want
+
+	   tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
+	}
+	#stop cluster
+	stopCluster(cl)
+
+
+	modelos
+}
+
 mPred <- function(test, modelos){
 	decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
+
 	for (i in seq(length(modelos))) {
-		decisiones[,i] <- t(as.data.frame(ova_ovo_predict(test, modelos[[i]])))
+		decisiones[,i] <- (ova_ovo_predict(test, modelos[[i]]))
 		rownames(decisiones) <- c()
 	}
 
 	decisiones <- apply(X=decisiones, MARGIN=1, FUN=function(x) mfv(as.numeric(x)))
 	sapply(decisiones,function(x) x[[1]][[1]])
 }
+
+
+mPred_paralel <- function(test, modelos){
+	decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
+
+	cores=detectCores()
+	cl <- makeCluster(cores[1]-1) #not to overload your computer
+	registerDoParallel(cl)
+
+	decisiones <- foreach(i=seq(length(modelos)), .export = ls(globalenv()),.combine=cbind) %dopar% {
+	   tempMatrix = (ova_ovo_predict(test, modelos[[i]])) #calling a function
+	   rownames(tempMatrix) <- c()
+	   #do other things if you want
+
+	   tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
+	}
+	#stop cluster
+	stopCluster(cl)
+
+	decisiones <- apply(X=decisiones, MARGIN=1, FUN=function(x) mfv(as.numeric(x)))
+	sapply(decisiones,function(x) x[[1]][[1]])
+}
+
 
 ####Ova-OVO#################
 
@@ -43,11 +88,12 @@ ova_ovo_predict <- function(test, modelos, k=4){
 	ova_preds <- ova_predict(test, modelos_ova, k, T)
 	preds <- vector(mode = "list")
 
-	for (i in seq(nrow(ova_preds))) {
-		preds[[i]] <- ovo_predict(test, i, modelos_ovo, sec_max(ova_preds[i,])-1)
-	}
+	sapply(X=seq(nrow(ova_preds)), FUN = function(x) ovo_predict(test, x, modelos_ovo, sec_max(ova_preds[x,])-1))
+	#for (i in seq(nrow(ova_preds))) {
+	#	preds[[i]] <- ovo_predict(test, i, modelos_ovo, sec_max(ova_preds[i,])-1)
+	#}
 
-	preds
+	#preds
 }
 
 ################# OVO ############################
