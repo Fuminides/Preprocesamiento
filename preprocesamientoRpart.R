@@ -3,7 +3,7 @@ library(doParallel)
 require(modeest)
 
 ##### Boosting #############
-boosting_train <- function(datos, n=5, b=10,r=1000){
+boosting_train <- function(datos, boosting=5, bagging=10,rows=1000){
 	originales <- datos
 	actuales <- originales
 	modelos_finales <- list()
@@ -115,10 +115,10 @@ mPred_paralel <- function(test, modelos){
 	decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
 
 	cores=detectCores()
-	cl <- makeCluster(cores[1]-2) #not to overload your computer
+	cl <- makeCluster(cores[1]-1) #not to overload your computer
 	registerDoParallel(cl)
 
-	decisiones <- foreach(i=seq(length(modelos)), .export = c("ova_ovo_predict","ova_predict", "ovo_predict","sec_max"),.combine=cbind) %dopar% {
+	decisiones <- foreach(i=seq(length(modelos)), .export = c("ova_ovo_predict","ova_predict", "ovo_predict","sec_max"), .errorhandling="remove",.combine=cbind) %dopar% {
 	   tempMatrix = (ova_ovo_predict(test, modelos[[i]])) #calling a function
 	   rownames(tempMatrix) <- c()
 	   #do other things if you want
@@ -265,6 +265,22 @@ sec_max <- function(x){
 	c(max1,max2)
 }
 
-train <- load_train()
-test <- load_test()
+valores_imputados <- function(){
+	train <- load_train()
+	test <- load_test()
+	y<- train[,76]
+	joined <- rbind(train[,-76], test)
+	prunned <- knnImputation(joined)
+
+	train <- prunned[c(seq(nrow(train))), ]
+	train$y <- y
+	test <- prunned[c(seq(nrow(test)))+nrow(train), ]
+
+	list(train, test)
+}
+
+dum <- valores_imputados()
+train <- dum[[1]]
+test <- dum[[2]]
+rm(dum)
 mini <- train[seq(100),]
