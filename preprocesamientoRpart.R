@@ -9,8 +9,8 @@ boosting_train <- function(datos, boosting=5, bagging=10,rows=1000){
 	actuales <- originales
 	modelos_finales <- list()
 
-	for (i in seq(n)) {
-		modelos <- bootstrap_parallel(actuales, b,r)
+	for (i in seq(boosting)) {
+		modelos <- bootstrap_parallel(actuales, bagging,row)
 		predicciones <- mPred_paralel(actuales, modelos)
 
 		indices <- predicciones!=actuales$y
