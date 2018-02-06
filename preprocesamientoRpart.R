@@ -1,7 +1,7 @@
 require("rpart")
 library(doParallel)
 require(modeest)
-require(DmwR)
+require(DMwR)
 
 ##### Boosting #############
 boosting_train <- function(datos, boosting=5, bagging=10,rows=1000){
@@ -10,7 +10,7 @@ boosting_train <- function(datos, boosting=5, bagging=10,rows=1000){
 	modelos_finales <- list()
 
 	for (i in seq(boosting)) {
-		modelos <- bootstrap_parallel(actuales, bagging,row)
+		modelos <- bootstrap_parallel(actuales, bagging,rows)
 		predicciones <- mPred_paralel(actuales, modelos)
 
 		indices <- predicciones!=actuales$y
