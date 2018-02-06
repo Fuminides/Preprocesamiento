@@ -1,6 +1,7 @@
 require("rpart")
 library(doParallel)
 require(modeest)
+require(DmwR)
 
 ##### Boosting #############
 boosting_train <- function(datos, boosting=5, bagging=10,rows=1000){
@@ -279,8 +280,28 @@ valores_imputados <- function(){
 	list(train, test)
 }
 
+nivelate <- function(datos){
+	clases <- split(datos,datos$y)
+	conteos <- sapply(X=clases,FUN=nrow)
+	mas_comun <- max(conteos)
+	resultado <- data.frame(matrix(0,nrow=0,ncol=ncol(datos)))
+
+	for (i in seq(length(conteos))) {
+		if(conteos[[i]] != mas_comun){
+			niveladas <- dplyr::sample_n(clases[[i]], mas_comun, replace=TRUE)
+			resultado <- rbind(resultado,niveladas)
+		}
+		else{
+			resultado <- rbind(resultado,clases[[i]])
+		}
+	}
+
+	resultado
+}
+
 dum <- valores_imputados()
 train <- dum[[1]]
 test <- dum[[2]]
 rm(dum)
+train <- dplyr::sample_frac(nivelate(train))
 mini <- train[seq(100),]
