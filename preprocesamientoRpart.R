@@ -1,5 +1,6 @@
 require("rpart")
-
+library(doParallel)
+require(modeest)
 
 ##### Boosting #############
 boosting_train <- function(datos, n=5, b=10,r=1000){
@@ -13,7 +14,7 @@ boosting_train <- function(datos, n=5, b=10,r=1000){
 
 		indices <- predicciones!=actuales$y
 		print(mean(indices))
-		fallos <- actuales[indices]
+		fallos <- actuales[indices,]
 		actuales <- rbind(originales,fallos)
 
 		modelos_finales[[i]] <- list(modelos)
@@ -21,6 +22,18 @@ boosting_train <- function(datos, n=5, b=10,r=1000){
 
 	modelos_finales
 
+}
+
+globalPred <- function(test, modelos){
+	decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
+
+	for (i in seq(length(modelos))) {
+		decisiones[,i] <- (mPred_paralel(test, modelos[[i]][[1]]))
+		rownames(decisiones) <- c()
+	}
+
+	decisiones <- apply(X=decisiones, MARGIN=1, FUN=function(x) mfv(as.numeric(x)))
+	sapply(decisiones,function(x) x[[1]][[1]])
 }
 
 #### Bootstrap #############
@@ -45,7 +58,15 @@ bootstrap <- function(datos, n=100, r=1000){
 }
 
 my_append <- function(vieja, nueva){
+	vieja[[length(vieja)+1]] <- nueva
+	return(vieja)
+}
+
+my_append2 <- function(vieja,nueva){
 	append(list(vieja),list(nueva))
+}
+my_append3 <- function(vieja,nueva){
+	c(vieja,nueva)
 }
 
 bootstrap_parallel <- function(datos, n=100, r=1000){
@@ -56,7 +77,7 @@ bootstrap_parallel <- function(datos, n=100, r=1000){
 	cl <- makeCluster(cores[1]-1) #not to overload your computer
 	registerDoParallel(cl)
 
-	modelos <- foreach(i=seq(n), .export = ls(globalenv()) , .packages="rpart", .combine=my_append) %dopar% {
+	modelos <- foreach(i=seq(n), .export = c("ova_ovo_classifier","ovo_rpart","ova_rpart","ova_predict", "ovo_predict","sec_max") , .packages="rpart", .combine=my_append3) %dopar% {
 	   tempMatrix <- ova_ovo_classifier(muestras[[i]])
 	   tempMatrix
 	   #do other things if you want
@@ -65,9 +86,16 @@ bootstrap_parallel <- function(datos, n=100, r=1000){
 	}
 	#stop cluster
 	stopCluster(cl)
+	modelos_finales <- list()
+	z<-1
+	for (i in seq(n)) {
+		modelos_finales[[i]] <- list(modelos[[z]], modelos[[z+1]])
+		z=z+2
+	}
+	#modelos[[n]] <- list(modelos[[n]], modelos[[n+1]])
+	#modelos[[n+1]] <- NULL
 
-
-	modelos
+	modelos_finales
 }
 
 mPred <- function(test, modelos){
@@ -84,13 +112,13 @@ mPred <- function(test, modelos){
 
 
 mPred_paralel <- function(test, modelos){
-	#decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
+	decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
 
 	cores=detectCores()
-	cl <- makeCluster(cores[1]-1) #not to overload your computer
+	cl <- makeCluster(cores[1]-2) #not to overload your computer
 	registerDoParallel(cl)
 
-	decisiones <- foreach(i=seq(length(modelos)), .export = ls(globalenv()),.combine=cbind) %dopar% {
+	decisiones <- foreach(i=seq(length(modelos)), .export = c("ova_ovo_predict","ova_predict", "ovo_predict","sec_max"),.combine=cbind) %dopar% {
 	   tempMatrix = (ova_ovo_predict(test, modelos[[i]])) #calling a function
 	   rownames(tempMatrix) <- c()
 	   #do other things if you want
@@ -236,3 +264,7 @@ sec_max <- function(x){
 
 	c(max1,max2)
 }
+
+train <- load_train()
+test <- load_test()
+mini <- train[seq(100),]
