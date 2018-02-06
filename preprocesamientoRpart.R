@@ -1,3 +1,28 @@
+require("rpart")
+
+
+##### Boosting #############
+boosting_train <- function(datos, n=5, b=10,r=1000){
+	originales <- datos
+	actuales <- originales
+	modelos_finales <- list()
+
+	for (i in seq(n)) {
+		modelos <- bootstrap_parallel(actuales, b,r)
+		predicciones <- mPred_paralel(actuales, modelos)
+
+		indices <- predicciones!=actuales$y
+		print(mean(indices))
+		fallos <- actuales[indices]
+		actuales <- rbind(originales,fallos)
+
+		modelos_finales[[i]] <- list(modelos)
+	}
+
+	modelos_finales
+
+}
+
 #### Bootstrap #############
 
 generate_samples <- function(datos, cantidad, rows){
@@ -19,6 +44,10 @@ bootstrap <- function(datos, n=100, r=1000){
 	modelos
 }
 
+my_append <- function(vieja, nueva){
+	append(list(vieja),list(nueva))
+}
+
 bootstrap_parallel <- function(datos, n=100, r=1000){
 	muestras <- generate_samples(datos,n,r)
 	modelos <- list()
@@ -27,11 +56,12 @@ bootstrap_parallel <- function(datos, n=100, r=1000){
 	cl <- makeCluster(cores[1]-1) #not to overload your computer
 	registerDoParallel(cl)
 
-	modelos <- foreach(i=seq(length(n)), .export = ls(globalenv()) ,.combine=list) %dopar% {
-	   tempMatrix = ova_ovo_classifier(muestras[[i]])
+	modelos <- foreach(i=seq(n), .export = ls(globalenv()) , .packages="rpart", .combine=my_append) %dopar% {
+	   tempMatrix <- ova_ovo_classifier(muestras[[i]])
+	   tempMatrix
 	   #do other things if you want
 
-	   tempMatrix #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
+	    #Equivalent to finalMatrix = cbind(finalMatrix, tempMatrix)
 	}
 	#stop cluster
 	stopCluster(cl)
@@ -54,7 +84,7 @@ mPred <- function(test, modelos){
 
 
 mPred_paralel <- function(test, modelos){
-	decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
+	#decisiones <- data.frame(matrix(0, ncol = length(modelos), nrow = nrow(test)))
 
 	cores=detectCores()
 	cl <- makeCluster(cores[1]-1) #not to overload your computer
@@ -151,8 +181,8 @@ ova_rpart <- function(datas, k=4){
 ova_predict <- function(test, fits, k=4, probs=F){
 	predicciones <- as.data.frame(matrix(0, ncol = 4, nrow = nrow(test)))
 
-	for (i in seq(k)-1) {
-		predicciones[,i+1] <- predict(fits[[i+1]], test, type='prob')[,2]
+	for (i in seq(length(fits))) {
+		predicciones[,i] <- predict(fits[[i]], test, type='prob')[,2]
 	}
 
 	if (probs){
