@@ -18,3 +18,7 @@ write_prediction <- function(y_1){
       quote = FALSE, row.names = FALSE,
       append = FALSE, sep = ",")
 }
+
+write_test <- function(fit){
+
+}
