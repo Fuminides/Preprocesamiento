@@ -3,6 +3,7 @@ library(doParallel)
 require(modeest)
 require(DMwR)
 require(ROSE)
+require(mice)
 
 #####k-fold#################
 kfold_rpart <- function(datos, mifit, mipredict, k=10){
@@ -19,6 +20,7 @@ kfold_rpart <- function(datos, mifit, mipredict, k=10){
 
 	mean(aciertos)
 }
+#Converts missing in NA
 
 #comitee filter
 comitee <- function(train, k=3, strict=F){
@@ -59,13 +61,16 @@ sec_max <- function(x){
 	c(max1,max2)
 }
 
+aux <- function(x) {if (is.factor(x)){x[(x == "")] = NA;droplevels(x)} else {x}}
+
 valores_imputados <- function(){
 	train <- load_train()
 	test <- load_test()
 	y<- train[,76]
 	joined <- rbind(train[,-76], test)
-	prunned <- knnImputation(joined)
-
+	joined <- as.data.frame(sapply(joined, aux))
+	prunned <- mice(joined, printFlag=F) #Le lleva un rato, si
+	prunned <- complete(prunned)
 	train <- prunned[c(seq(nrow(train))), ]
 	train$y <- y
 	test <- prunned[c(seq(nrow(test)))+nrow(train), ]
@@ -103,12 +108,12 @@ dum <- valores_imputados()
 train <- dum[[1]]
 test <- dum[[2]]
 rm(dum)
-levels(train$x0)[1] <- "missing"
-levels(train$x14)[1] <- "missing"
-levels(train$x17)[1] <- "missing"
-levels(train$x51)[1] <- "missing"
-levels(train$x61)[1] <- "missing"
-levels(train$x63)[1] <- "missing"
+#levels(train$x0)[1] <- "missing"
+#levels(train$x14)[1] <- "missing"
+#levels(train$x17)[1] <- "missing"
+#levels(train$x51)[1] <- "missing"
+#levels(train$x61)[1] <- "missing"
+#levels(train$x63)[1] <- "missing"
 train <- train[comitee(train, 12),]
 train <- smote(train)
 mini <- train[seq(100),]
