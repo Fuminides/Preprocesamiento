@@ -1,10 +1,7 @@
 require(caret)
 require(dplyr)
 
-write_test_glm <- function(fit){
-	write_prediction(ova_predict(test, fit))
-}
-
+#Modelos finales resultado de la seleccion de caracteristicas
 modelo0 <- "y~.-x73-x0-x17-x14-x21-x51-x30-x44-x27-x61-x62-x72-x71-x42-x6-x52-x54-x55-x68-x57-x8-x12-x18-x49-x20-x24-x36-x41-x34-x28-x31-x69"
 modelo1 <- "y~.-x61-x51-x32-x68-x54-x55-x63-x41-x36-x0-x40-x37-x58-x33-x29-x22-x60-x35-x1-x14-x7-x31-x4-x49-x13-x48-x8-x38-x64-x52-x57-x24-x16-x56-x30-x74-x9-x45-x3-x28-x66"
 modelo2 <- "y~.-x61-x17-x37-x29-x44-x50-x0-x26-x13-x14-x38-x39-x52-x73-x72-x67-x36-x30-x34-x48-x66-x20-x25-x51-x31-x58-x68-x69-x49-x16-x57-x10-x45-x42-x8"
@@ -18,6 +15,7 @@ modelo02 <- "y~.-x61-x14-x36-x57-x17-x53-x51-x38-x44-x41-x62-x15-x39-x7-x22-x25-
 modelo10 <- "y~.-x61-x17-x14-x28-x48-x63-x15-x60-x43-x30-x29-x6-x5-x24-x0-x10-x44-x20-x42-x41-x25-x49-x68-x55-x56-x73-x54-x57-x51-x4-x8-x58-x31-x50-x38-x37-x2-x16-x47-x69-x12-x34"
 
 ############# OVA #################################
+#Crea clasificadores OVA para todas las clases del conjunto de datos con GLM.
 ova_glm <- function(datas, k=4, formula = "y~."){
 	modelos <- vector(mode = "list", length = k)
 
@@ -47,7 +45,7 @@ ova_glm <- function(datas, k=4, formula = "y~."){
 
 	modelos
 }
-
+#Predictor que utilza los modelos OVA para dar una salida.
 ova_predict <- function(test, fits, k=4, probs=F){
 	predicciones <- as.data.frame(matrix(0, ncol = 4, nrow = nrow(test)))
 
@@ -63,7 +61,7 @@ ova_predict <- function(test, fits, k=4, probs=F){
 		apply(predicciones, 1, function(x) min(which(x==max(x))))-1
 	}
 }
-
+#Predictor igual que el anterior, pero permite devolver "No se"
 ova_predict_doubt <- function(test, fits, k=4, probs=F){
 	predicciones <- as.data.frame(matrix(0, ncol = 4, nrow = nrow(test)))
 
@@ -81,7 +79,7 @@ ova_predict_doubt <- function(test, fits, k=4, probs=F){
 }
 
 
-
+#Aplica OVA en arbol segun las clases sean más o menos populares.
 ova_predict_tree <- function(test, fits, datas=NULL, k=4, basic = T){
 	predicciones <- as.data.frame(matrix(0, ncol = 4, nrow = nrow(test)))
 
@@ -104,6 +102,7 @@ ova_predict_tree <- function(test, fits, datas=NULL, k=4, basic = T){
 	predicciones
 }
 
+#Mira interacciones de grado 2 entre todas las variables numericas.
 level2_check <- function(formula){
 	m_indice <- 0
 	mejor <- 0
@@ -124,7 +123,7 @@ level2_check <- function(formula){
 	c(m_indice, mejor)		
 }
 
-
+#Mira itneracciones de nivel 3 entre todas las variables numericas.
 level3_check <- function(formula){
 	m_indice <- 0
 	mejor <- 0
@@ -145,6 +144,7 @@ level3_check <- function(formula){
 	c(m_indice, mejor)		
 }
 
+#Devuelve la mejor interaccion entre dos varaibles del modelo glm.
 best_interact <- function(indice){
 	m_indice <- 0
 	mejor <- 0
@@ -164,12 +164,13 @@ best_interact <- function(indice){
 	}	
 	c(m_indice, mejor)		
 }
-
+#Devuelve aquellos regresores del modelo que tienen p-valor < 0.05
 get_best <- function(m){
 	best <- rownames(data.frame(summary(m)$coef[summary(m)$coef[,4] <= .05, 4]))
 	paste(best, collapse = '+')
 }
 
+#Crea un modelo glm y devuelve tasa de acierto y la calidad de los regresores, indicando cual es el peor.
 evaluate_fit <- function(formula, data1){
 	fit <-glm(formula, data=data1, family="binomial")
 	preds <- predict(fit, data1, type='response')
@@ -178,21 +179,12 @@ evaluate_fit <- function(formula, data1){
 	print(sort(summary(fit)$coef[,4], decreasing = T)[1])
 
 }
-
-evaluate_fit_ovo <- function(formula, data1, nivel){
-	fit <-glm(formula, data=data1, family="binomial")
-	preds <- predict(fit, data1, type='response')
-	print(summary(fit))
-	print(mean((preds>0.5)==(data1$y==nivel)))
-	print(sort(summary(fit)$coef[,4], decreasing = T)[c(1,2)])
-
-}
 ####Ova-OVO#################
-
+#Cres un modelo ova-ovo para glm.
 ova_ovo_glm <- function(datos, k=4){
 	list(ovo_glm(datos,k), ova_glm(datos, k))
 }
-
+#Hace una prediccion con esos mdoelos.
 ova_ovo_predict <- function(test, modelos, k=4){
 	modelos_ovo <- modelos[[1]]
 	modelos_ova <- modelos[[2]]
@@ -210,6 +202,7 @@ ova_ovo_predict <- function(test, modelos, k=4){
 }
 
 ################# OVO ############################
+#Entrena un modelo OVO para todas las combinaciones de clases.
 ovo_glm <- function(datas, k=4){
 	clasificadores <- list()
 	combinaciones <- combn(k,2)
@@ -265,7 +258,7 @@ ovo_glm <- function(datas, k=4){
 	clasificadores
 }
 
-
+#Realiza una prediccion de una muestra con un modelo OVO.
 ovo_predict <- function(datos_originales, i, modelos_ovo, indices){
 	muestra <- datos_originales[i,]
 	modelo <- modelos_ovo[[paste("a",indices[[1]],indices[[2]], sep="")]][[1]]

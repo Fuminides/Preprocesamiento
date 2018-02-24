@@ -1,9 +1,10 @@
 ####Ova-OVO#################
 
+#Crea y entrena un clasificador OVO-OVA de rpart.
 ova_ovo_rpart <- function(datos, k=4){
 	list(ovo_rpart(datos,k), ova_rpart(datos, k))
 }
-
+#Genera una prediccion para el clasificador OVO-OVA
 ova_ovo_predict <- function(test, modelos, k=4){
 	modelos_ovo <- modelos[[1]]
 	modelos_ova <- modelos[[2]]
@@ -20,6 +21,7 @@ ova_ovo_predict <- function(test, modelos, k=4){
 }
 
 ################# OVO ############################
+#Entrena un conjunto de clasificadores OVO con Rpart.
 ovo_rpart <- function(datas, k=4){
 	clasificadores <- list()
 	combinaciones <- combn(k,2)
@@ -43,7 +45,7 @@ ovo_rpart <- function(datas, k=4){
 	clasificadores
 }
 
-
+#Predice una muestra con un modelo OVO especificado.
 ovo_predict <- function(datos_originales, i, modelos_ovo, indices){
 	muestra <- datos_originales[i,]
 	modelo <- modelos_ovo[[paste("a",indices[[1]],indices[[2]], sep="")]][[1]]
@@ -58,6 +60,7 @@ ovo_predict <- function(datos_originales, i, modelos_ovo, indices){
 
 
 ############# OVA #################################
+#Entrena los modelos OVA de rpart.
 ova_rpart <- function(datas, k=4){
 	modelos <- vector(mode = "list", length = k)
 
@@ -73,7 +76,7 @@ ova_rpart <- function(datas, k=4){
 
 	modelos
 }
-
+#Hace la prediccion de un modelo OVA con rpart.
 ova_predict <- function(test, fits, k=4, probs=F){
 	predicciones <- as.data.frame(matrix(0, ncol = 4, nrow = nrow(test)))
 
@@ -91,7 +94,7 @@ ova_predict <- function(test, fits, k=4, probs=F){
 }
 
 
-
+#Aplica el modelo OVA en forma de árbol, (de más frecuente a menos) según la clase.
 ova_predict_tree <- function(test, fits, datas=NULL, k=4, basic = T){
 	predicciones <- as.data.frame(matrix(0, ncol = 4, nrow = nrow(test)))
 

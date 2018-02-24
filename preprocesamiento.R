@@ -5,8 +5,11 @@ require(DMwR)
 require(ROSE)
 require(mice)
 
+source("utils.R")
+
 #####k-fold#################
-kfold_rpart <- function(datos, mifit, mipredict, k=10){
+#Realiza k-fold dado un conjunto de datos para entrenar, y una función para clasificar y predecir.
+kfold <- function(datos, mifit, mipredict, k=10){
 	flds <- createFolds(datos$y, k = 10, list = TRUE, returnTrain = FALSE)
 	aciertos <- c(seq(k))
 
@@ -20,9 +23,13 @@ kfold_rpart <- function(datos, mifit, mipredict, k=10){
 
 	mean(aciertos)
 }
-#Converts missing in NA
 
-#comitee filter
+################################################################
+# FUNCIONES PREPROCESAMIENTO
+################################################################
+#Hace un filtro de ruido por comitee:
+# Crea varios clasificadores C5.0, a partes de muestras aleatorias del conjunto inicial. Si ninguno la clasifica bien,
+#entonces la muestra se considera ruido.
 comitee <- function(train, k=3, strict=F){
 	valido <- logical(length=nrow(train))
 	rows <- 1000
@@ -43,7 +50,8 @@ comitee <- function(train, k=3, strict=F){
 	}
 	
 }
-################################################################
+
+#Normaliza los campos numericos del conjunto de datos.
 normalize <- function(train){
 	strain <- preProcess(train[, -76], method=c("center", "scale"))
 	strain2 <- predict(strain, train[, -76])
@@ -52,6 +60,8 @@ normalize <- function(train){
 	strain2
 }
 
+#Devuelve los dos valores maximos de un array
+#(Funcion auxiliar para la seleccion de variables)
 sec_max <- function(x){
 	max1 <- which.max(x)
 	x_dummy <- x
@@ -61,8 +71,10 @@ sec_max <- function(x){
 	c(max1,max2)
 }
 
+#Funcion auxiliar que convierte los niveles "" de los factores en NA.
 aux <- function(x) {if (is.factor(x)){x[(x == "")] = NA;droplevels(x)} else {x}}
 
+#Imputa los valores NA del conjunto de datos con MICE.
 valores_imputados <- function(){
 	train <- load_train()
 	test <- load_test()
@@ -78,6 +90,7 @@ valores_imputados <- function(){
 	list(train, test)
 }
 
+#Hace oversampling simple de las clases menos comunes para equilibrar el dataset.
 nivelate <- function(datos){
 	clases <- split(datos,datos$y)
 	conteos <- sapply(X=clases,FUN=nrow)
@@ -97,6 +110,7 @@ nivelate <- function(datos){
 	resultado
 }
 
+#Aplica smote al conjunto de datos.
 smote <- function(datos){
 	datos$y <- factor(datos$y)
 	datos <- SMOTE(form=y~.,data=datos, perc.under = 500)
@@ -104,16 +118,17 @@ smote <- function(datos){
 	datos
 }
 
+#Al cargar el fichero, se carga el conjunto de datos con el siguiente preprocesamiento:
+#MICE para imputar NAs
+#Comitee filter para eliminar outliers multivariable.
+#Smote para balancear el conjunto de datos.
 dum <- valores_imputados()
 train <- dum[[1]]
 test <- dum[[2]]
 rm(dum)
-#levels(train$x0)[1] <- "missing"
-#levels(train$x14)[1] <- "missing"
-#levels(train$x17)[1] <- "missing"
-#levels(train$x51)[1] <- "missing"
-#levels(train$x61)[1] <- "missing"
-#levels(train$x63)[1] <- "missing"
 train <- train[comitee(train, 12),]
 train <- smote(train)
-mini <- train[seq(100),]
+mini <- train[seq(100),] #Se coge un pedazo más pequeño para hacer pruebas.
+
+
+
