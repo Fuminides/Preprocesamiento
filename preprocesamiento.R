@@ -4,7 +4,7 @@ require(modeest)
 require(DMwR)
 require(ROSE)
 require(mice)
-
+require(caret)
 source("utils.R")
 
 #####k-fold#################
@@ -38,7 +38,8 @@ comitee <- function(train, k=3, strict=F){
 	for (i in seq(k)) {
 		muestra <- dplyr::sample_n(train, rows, replace=TRUE)
 		muestra$y <- as.factor(muestra$y)
-		fit <- C5.0(x = muestra[, -ncol(muestra)], y = muestra$y)#fit <- rpart(y~., data=muestra, method="class")
+		fit <- C5.0(x = muestra[, -ncol(muestra)], y = muestra$y)
+		#fit <- rpart(y~., data=muestra, method="class")
 		predicciones[,i] <- predict(fit, train[, -ncol(muestra)], type="class")==train$y
 
 	}
@@ -53,8 +54,8 @@ comitee <- function(train, k=3, strict=F){
 
 #Normaliza los campos numericos del conjunto de datos.
 normalize <- function(train){
-	strain <- preProcess(train[, -76], method=c("center", "scale"))
-	strain2 <- predict(strain, train[, -76])
+	strain <- preProcess(train[, -ncol(train)], method=c("center", "scale"))
+	strain2 <- predict(strain, train[, -ncol(train)])
 	strain2$y <- train$y
 
 	strain2
@@ -132,3 +133,5 @@ mini <- train[seq(100),] #Se coge un pedazo más pequeño para hacer pruebas.
 
 
 
+#kfold(train, ova_ovo_rpart, ova_ovo_predict) #Ejemplo de llamada a kfold para rpart
+#kfold(train, ova_ovo_glm, ova_ovo_predict) #Ejemplo de llamada a kfold para glm

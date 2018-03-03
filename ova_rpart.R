@@ -116,3 +116,4 @@ ova_predict_tree <- function(test, fits, datas=NULL, k=4, basic = T){
 
 	predicciones
 }
+
