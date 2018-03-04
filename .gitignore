@@ -46,3 +46,6 @@ Network Trash Folder
 Temporary Items
 .apdisk
 .Rhistory
+*.gz
+memoria.aux
+memoria.log
